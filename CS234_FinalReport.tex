@@ -6,6 +6,7 @@
 \usepackage{microtype}
 \usepackage{graphicx}
 \usepackage{subfigure}
+\usepackage{amsfonts}
 \usepackage{booktabs} % for professional tables
 
 % hyperref makes hyperlinks in the resulting PDF.
@@ -18,20 +19,24 @@
 \newcommand{\theHalgorithm}{\arabic{algorithm}}
 
 % Use the following line for the initial blind version submitted for review:
-\usepackage{icml2018}
+\usepackage[accepted]{icml2018}
 
 % If accepted, instead use the following line for the camera-ready submission:
 %\usepackage[accepted]{icml2018}
 
 % The \icmltitle you define below is probably too long as a header.
 % Therefore, a short form for the running title is supplied here:
-\icmltitlerunning{Submission and Formatting Instructions for ICML 2018}
+\icmltitlerunning{CS234 Final Project Report}
+
+\usepackage{todonotes}
+\let\svtodo\todo\renewcommand\todo[1]{\svtodo[inline]{#1}}
+\usepackage{amsmath}
+\usepackage{cleveref}
 
 \begin{document}
 
 \twocolumn[
-\icmltitle{Submission and Formatting Instructions for \\
-           International Conference on Machine Learning (ICML 2018)}
+\icmltitle{Warfarin Dosing Using Linear Bandit Algorithms}
 
 % It is OKAY to include author information, even for blind
 % submissions: the style file will automatically remove it for you
@@ -49,26 +54,10 @@
 \icmlsetsymbol{equal}{*}
 
 \begin{icmlauthorlist}
-\icmlauthor{Aeiau Zzzz}{equal,to}
-\icmlauthor{Bauiu C.~Yyyy}{equal,to,goo}
-\icmlauthor{Cieua Vvvvv}{goo}
-\icmlauthor{Iaesut Saoeu}{ed}
-\icmlauthor{Fiuea Rrrr}{to}
-\icmlauthor{Tateu H.~Yasehe}{ed,to,goo}
-\icmlauthor{Aaoeu Iasoh}{goo}
-\icmlauthor{Buiui Eueu}{ed}
-\icmlauthor{Aeuia Zzzz}{ed}
-\icmlauthor{Bieea C.~Yyyy}{to,goo}
-\icmlauthor{Teoau Xxxx}{ed}
-\icmlauthor{Eee Pppp}{ed}
+\icmlauthor{Anthony Corso - }{}
+\icmlauthor{Department of Aeronautics and Astronautics}{}
+\icmlauthor{github: https://github.com/ancorso/CS234\_Final\_Project}{}
 \end{icmlauthorlist}
-
-\icmlaffiliation{to}{Department of Computation, University of Torontoland, Torontoland, Canada}
-\icmlaffiliation{goo}{Googol ShallowMind, New London, Michigan, USA}
-\icmlaffiliation{ed}{School of Computation, University of Edenborrow, Edenborrow, United Kingdom}
-
-\icmlcorrespondingauthor{Cieua Vvvvv}{c.vvvvv@googol.com}
-\icmlcorrespondingauthor{Eee Pppp}{ep@eden.co.uk}
 
 % You may provide any keywords that you
 % find helpful for describing your paper; these are used to populate
@@ -87,381 +76,219 @@
 % Remove it (just {}) if you do not need this facility.
 
 %\printAffiliationsAndNotice{}  % leave blank if no need to mention equal contribution
-\printAffiliationsAndNotice{\icmlEqualContribution} % otherwise use the standard text.
+% \printAffiliationsAndNotice{\icmlEqualContribution} % otherwise use the standard text.
 
 \begin{abstract}
-This document provides a basic paper template and submission guidelines.
-Abstracts must be a single paragraph, ideally between 4--6 sentences long.
-Gross violations will trigger corrections at the camera-ready phase.
+Warfarin is a life-saving anticoagulant that is administered to millions of people worldwide but it remains challenging to accurately determine the correct patient dose. Incorrect dosing can have severe side effects and should be mitigated. Existing dosing algorithms rely on patient data to determine a model for correct dosing, but this requires the model to have access to the data of many patients who have already been prescribed the correct dose. In this work we implement a reinforcement learning algorithm that can determine the correct dosing with competitive accuracy while in an online patient setting. It is also shown that the reward function can be modified to limit severe dosing mistakes and the relative performance of different dosing algorithms is compared. 
 \end{abstract}
 
-\section{Electronic Submission}
-\label{submission}
+\section{Introduction}
+\label{introduction}
 
-Submission to ICML 2018 will be entirely electronic, via a web site
-(not email). Information about the submission process and \LaTeX\ templates
-are available on the conference web site at:
-\begin{center}
-\textbf{\texttt{http://icml.cc/2018/}}
-\end{center}
+Warfarin is a life-saving anticoagulant medication that treats and prevents blood clots. It is the most extensively used anticoagulant medication worldwide (with 30 million prescriptions written in 2004 in the USA), yet it is still a challenge to determine the correct dose for a patient \cite{international2009estimation}. Appropriate dosing levels can vary by an order of magnitude, and if the dosing is incorrect, the patient can experience severe side effects that include death. 
 
-The guidelines below will be enforced for initial submissions and
-camera-ready copies. Here is a brief summary:
+The correct dosage amount has been shown to be influenced by clinical factors, demographics, and variations in two specific genes (CYP2C9 and VKORC1) \cite{international2009estimation} and these factors should be taken into account when determining the starting Warfarin dose. Existing dosing algorithms include simple heuristics (such as giving a medium dosage to each patient to start) and linear models derived from Warfarin patient data. 
+
+This work will demonstrate that a competitive model can be determined in an online manner using a simple reinforcement learning (RL) algorithm. ``Online" refers to a framework where the algorithm sees patient data one at a time as they come in and must immediately make a decision regarding dosing and ``competitive" refers to this model being as accurate as other baseline methods. An online model such as this could be used for future medication rollouts, where there is not already a wealth of data to learn a model from.
+
+This paper is organized as follows: \Cref{background} gives an overview of existing Warfarin dosing algorithms as well as some basic theory to support the RL approach. \Cref{approach} will describe the evaluation metrics and ata processing approaches as well as some modifications to the reward functio. The results will be presented in \cref{experiment} and lastly, \cref{conclusions} will conclude and give some directions for future work.
+
+\section{Background and Related Work}
+\label{background}
+This section provides the necessary background to understand the data and the algorithms used in this project. The first section describes the patient data set that was used. The next section describes some existing algorithms that are used clinically. The third section demonstrates how this problem can be cast as a reinforcement learning problem, and the final section gives a good algorithm that could solve it.
+
+\subsection{Dataset}
+The dataset for this work was provided by the International Warfarin Pharmacogenics Consortium which comprises 21 research groups from around the world. The research groups compiled medical data for 5700 patients that were prescribed Warfarin \cite{international2009estimation}. The features that were reported in the dataset included demographic information such as age, gender, ethnicity and race. The clinical data included height, weight, smoking habits, other medications and other comorbidities. The last component of the dataset reports genetic information such as the presence of genotypic variants of CYP2C9 and VKORC1. The data also includes the correct dose of Warfarin (in mg/week) that was determined for each patient after some trial and error by a doctor. The correct dose is considered the ground truth for the following experiments. 
+
+\subsection{Practical Dosing Algorithms}
+The simplest dosing algorithm that one could reasonably consider is to dose each patient with the same moderate starting dosage and then modify the treatment as necessary. A natural choice for this constant dose approach would be the average true Warfarin dose across many patients. This approach is known as "fixed dosing" and we investigate how effective it can be for a fixed dose rate of 35 mg/week.
+
+An improved dosing model is to construct a linear model from a subset of the provided features and use it to predict the correct Warfarin dose. The clinical dosing algorithm \cite{international2009estimation} seeks to use only clinical and demographic data to create a simple yet effective linear model that has the following form:
+
+\begin{equation}
+\begin{split}
+    & 4.0376 \\
+    - & 0.2546 \times \rm{\ Age \ in \ decades} \\
+    + & 0.0118 \times \rm{\ Height \ in \ cm}\\
+    + & 0.0134 \times \rm{\ Weight \ in \ kg}\\
+    - & 0.6752 \times \rm{\ Asian \ race}\\
+    + & 0.4060 \times \rm{\ Black \ or \ African \ American} \\
+    + & 0.0443 \times \rm{\ Missing \ or \ Mized \ race} \\
+    + & 1.2799 \times \rm{\ Enzyme \ inducer \ status} \\
+    - & 0.5695 \times \rm{\ Amiodarone \ status} \\
+    = & \sqrt{\rm weekly \ Warfarin \ dose}
+\end{split}
+\end{equation}
+
+Where every variable but the age, height, and weight are boolean flags indicating if the statement is true. The efficacy of these two baseline algorithms will be compared with other models in the experimentation section.
+
+\subsection{Introduction to Linear Contextual Bandits}
+We now cast the dosing problem as an online bandit problem to be solved using reinforcement learning. Assume that we have no information regarding the correct dosing of Warfarin (except, perhaps a range of possible doses) then we observe patients one by one and have access to their \textit{context}, $X_t \in \mathbb{R}^d$ which is the collection of state information that is available for the patient. $d$ is the dimension of the context (or state) space of a patient. The algorithm we design will have to make a dosing decision for that patient and then receive a reward based on how close the dosage was to the correct Warfarin dosage. The RL algorithm will use that reward to update its internal parameters to hopefully make better decisions in the future. 
+
+A common tradeoff in bandit problems is the balance between exploration and exploitation where the algorithm must decide when to choose what it thinks is the best option and when to try a different option to learn more about the system it is interacting with. This tradeoff will be discussed in more detail later. 
+
+To make this concrete, we must specify what is meant by context, dosing decision and reward. For the remainder of this work (unless otherwise specified), these terms will be used as follows
 \begin{itemize}
-\item Submissions must be in PDF\@.
-\item The maximum paper length is \textbf{8 pages excluding references and
-    acknowledgements, and 10 pages including references and acknowledgements}
-    (pages 9 and 10 must contain only references and acknowledgements).
-\item \textbf{Do not include author information or acknowledgements} in your
-    initial submission.
-\item Your paper should be in \textbf{10 point Times font}.
-\item Make sure your PDF file only uses Type-1 fonts.
-\item Place figure captions \emph{under} the figure (and omit titles from inside
-    the graphic file itself). Place table captions \emph{over} the table.
-\item References must include page numbers whenever possible and be as complete
-    as possible. Place multiple citations in chronological order.
-\item Do not alter the style template; in particular, do not compress the paper
-    format by reducing the vertical spaces.
-\item Keep your abstract brief and self-contained, one paragraph and roughly
-    4--6 sentences. Gross violations will require correction at the
-    camera-ready phase. The title should have content words capitalized.
+    \item \textbf{context} - All of the patient information (demographic, clinical, and genetic) available from the aforementioned dataset. 
+    \item \textbf{dosing decision} - One of three available actions
+    \begin{enumerate}
+        \item Low Warfarin dose: under 21 mg/week
+        \item Medium Warfarin dose: 21-49 mg/week
+        \item High Warfarin dose: above 49 mg/week
+    \end{enumerate}
+    \item \textbf{reward} - A binary reward will be used: 0 if the algorithm chooses the correct dosage and -1 otherwise.
 \end{itemize}
 
-\subsection{Submitting Papers}
+A simplifying assumption that will be made for this problem is an assumption of linearity for the reward such that 
+\begin{equation}
+\label{linearity}
+    r_t(X_t, a_i) = X_t^T \theta_i + \epsilon_{i,t}
+\end{equation}
+where $\theta_i$ is an unknown vector of parameters in $\mathbb{R}^d$ for each action, $t$ is the patient index, and $\epsilon_{i,t}$ are independent Gaussian random variables with zero mean. With this formulation, we can easily define the \textit{regret} of an algorithm that learns an estimation of the parameters $\theta_i$. The regret is defined as the expected sum of differences between the best reward and the reward actually received by the algorithm. This is expressed mathematically as 
+\begin{equation}
+\mathbb{E}[ \max_j X_t^T \theta_j  - X_t^T \theta_i ]
+\end{equation}
+For our prescription of a binary reward, the regret simply becomes the negative of the cumulative reward since the best possible action for each patient gives 0 zero reward. The next section will outline one algorithm that is designed specifically to solve this linear bandit problem with theoretical guarantees on the regret.
 
-\textbf{Paper Deadline:} The deadline for paper submission that is
-advertised on the conference website is strict. If your full,
-anonymized, submission does not reach us on time, it will not be
-considered for publication. There is no separate abstract submission.
+\subsection{LinUCB}
+One of the most promising approaches to minimizing regret for a bandit problem is to use the idea of upper confidence bounds (UCBs). The idea is simple: be optimistic in the face of uncertainty and do so by retaining optimistic upper confidence bounds for each possible action. Then, always select the action that has the higher upper confidence bound. If the algorithm is right to be optimistic then it will experience a reward, and if it is wrong then it will be more sure that this action was incorrect for future reference. Upper confidence bound algorithms can guarantee with high-probability that the total regret will grow sub-linearly in the number of examples seen (under some modest assumptions), which is very desirable when dealing with a safety critical application like drug dosing. 
 
-\textbf{Anonymous Submission:} ICML uses double-blind review: no identifying
-author information may appear on the title page or in the paper
-itself. Section~\ref{author info} gives further details.
+The idea of UCBs was transferred to the linear contextual bandit problem by \cite{li2010contextual} who created the LinUCB algorithm. This algorithm makes the same assumption of linearity for the reward as in \cref{linearity}, and maintains linear model parameters $\theta$ and a confidence interval to be used as an upper confidence bound. The expected reward is then given by 
+\begin{equation} \mathbb{E}[r_{t, a}(X_t)] = X_t^T \theta_{t,a} \end{equation}
 
-\textbf{Simultaneous Submission:} ICML will not accept any paper which,
-at the time of submission, is under review for another conference or
-has already been published. This policy also applies to papers that
-overlap substantially in technical content with conference papers
-under review or previously published. ICML submissions must not be
-submitted to other conferences during ICML's review period. Authors
-may submit to ICML substantially different versions of journal papers
-that are currently under review by the journal, but not yet accepted
-at the time of submission. Informal publications, such as technical
-reports or papers in workshop proceedings which do not appear in
-print, do not fall under these restrictions.
-
-\medskip
-
-Authors must provide their manuscripts in \textbf{PDF} format.
-Furthermore, please make sure that files contain only embedded Type-1 fonts
-(e.g.,~using the program \texttt{pdffonts} in linux or using
-File/DocumentProperties/Fonts in Acrobat). Other fonts (like Type-3)
-might come from graphics files imported into the document.
-
-Authors using \textbf{Word} must convert their document to PDF\@. Most
-of the latest versions of Word have the facility to do this
-automatically. Submissions will not be accepted in Word format or any
-format other than PDF\@. Really. We're not joking. Don't send Word.
-
-Those who use \textbf{\LaTeX} should avoid including Type-3 fonts.
-Those using \texttt{latex} and \texttt{dvips} may need the following
-two commands:
-
-{\footnotesize
-\begin{verbatim}
-dvips -Ppdf -tletter -G0 -o paper.ps paper.dvi
-ps2pdf paper.ps
-\end{verbatim}}
-It is a zero following the ``-G'', which tells dvips to use
-the config.pdf file. Newer \TeX\ distributions don't always need this
-option.
-
-Using \texttt{pdflatex} rather than \texttt{latex}, often gives better
-results. This program avoids the Type-3 font problem, and supports more
-advanced features in the \texttt{microtype} package.
-
-\textbf{Graphics files} should be a reasonable size, and included from
-an appropriate format. Use vector formats (.eps/.pdf) for plots,
-lossless bitmap formats (.png) for raster graphics with sharp lines, and
-jpeg for photo-like images.
-
-The style file uses the \texttt{hyperref} package to make clickable
-links in documents. If this causes problems for you, add
-\texttt{nohyperref} as one of the options to the \texttt{icml2018}
-usepackage statement.
-
-
-\subsection{Submitting Final Camera-Ready Copy}
-
-The final versions of papers accepted for publication should follow the
-same format and naming convention as initial submissions, except that
-author information (names and affiliations) should be given. See
-Section~\ref{final author} for formatting instructions.
-
-The footnote, ``Preliminary work. Under review by the International
-Conference on Machine Learning (ICML). Do not distribute.'' must be
-modified to ``\textit{Proceedings of the
-$\mathit{35}^{th}$ International Conference on Machine Learning},
-Stockholm, Sweden, PMLR 80, 2018.
-Copyright 2018 by the author(s).''
-
-For those using the \textbf{\LaTeX} style file, this change (and others) is
-handled automatically by simply changing
-$\mathtt{\backslash usepackage\{icml2018\}}$ to
-$$\mathtt{\backslash usepackage[accepted]\{icml2018\}}$$
-Authors using \textbf{Word} must edit the
-footnote on the first page of the document themselves.
-
-Camera-ready copies should have the title of the paper as running head
-on each page except the first one. The running title consists of a
-single line centered above a horizontal rule which is $1$~point thick.
-The running head should be centered, bold and in $9$~point type. The
-rule should be $10$~points above the main text. For those using the
-\textbf{\LaTeX} style file, the original title is automatically set as running
-head using the \texttt{fancyhdr} package which is included in the ICML
-2018 style file package. In case that the original title exceeds the
-size restrictions, a shorter form can be supplied by using
-
-\verb|\icmltitlerunning{...}|
-
-just before $\mathtt{\backslash begin\{document\}}$.
-Authors using \textbf{Word} must edit the header of the document themselves.
-
-\section{Format of the Paper}
-
-All submissions must follow the specified format.
-
-\subsection{Length and Dimensions}
-
-Papers must not exceed eight (8) pages, including all figures, tables,
-and appendices, but excluding references and acknowledgements. When references and acknowledgements are included,
-the paper must not exceed ten (10) pages.
-Acknowledgements should be limited to grants and people who contributed to the paper.
-Any submission that exceeds
-this page limit, or that diverges significantly from the specified format,
-will be rejected without review.
-
-The text of the paper should be formatted in two columns, with an
-overall width of 6.75~inches, height of 9.0~inches, and 0.25~inches
-between the columns. The left margin should be 0.75~inches and the top
-margin 1.0~inch (2.54~cm). The right and bottom margins will depend on
-whether you print on US letter or A4 paper, but all final versions
-must be produced for US letter size.
-
-The paper body should be set in 10~point type with a vertical spacing
-of 11~points. Please use Times typeface throughout the text.
-
-\subsection{Title}
-
-The paper title should be set in 14~point bold type and centered
-between two horizontal rules that are 1~point thick, with 1.0~inch
-between the top rule and the top edge of the page. Capitalize the
-first letter of content words and put the rest of the title in lower
-case.
-
-\subsection{Author Information for Submission}
-\label{author info}
-
-ICML uses double-blind review, so author information must not appear. If
-you are using \LaTeX\/ and the \texttt{icml2018.sty} file, use
-\verb+\icmlauthor{...}+ to specify authors and \verb+\icmlaffiliation{...}+ to specify affiliations. (Read the TeX code used to produce this document for an example usage.) The author information
-will not be printed unless \texttt{accepted} is passed as an argument to the
-style file.
-Submissions that include the author information will not
-be reviewed.
-
-\subsubsection{Self-Citations}
-
-If you are citing published papers for which you are an author, refer
-to yourself in the third person. In particular, do not use phrases
-that reveal your identity (e.g., ``in previous work \cite{langley00}, we
-have shown \ldots'').
-
-Do not anonymize citations in the reference section. The only exception are manuscripts that are
-not yet published (e.g., under submission). If you choose to refer to
-such unpublished manuscripts \cite{anonymous}, anonymized copies have
-to be submitted
-as Supplementary Material via CMT\@. However, keep in mind that an ICML
-paper should be self contained and should contain sufficient detail
-for the reviewers to evaluate the work. In particular, reviewers are
-not required to look at the Supplementary Material when writing their
-review.
-
-\subsubsection{Camera-Ready Author Information}
-\label{final author}
-
-If a paper is accepted, a final camera-ready copy must be prepared.
-%
-For camera-ready papers, author information should start 0.3~inches below the
-bottom rule surrounding the title. The authors' names should appear in 10~point
-bold type, in a row, separated by white space, and centered. Author names should
-not be broken across lines. Unbolded superscripted numbers, starting 1, should
-be used to refer to affiliations.
-
-Affiliations should be numbered in the order of appearance. A single footnote
-block of text should be used to list all the affiliations. (Academic
-affiliations should list Department, University, City, State/Region, Country.
-Similarly for industrial affiliations.)
-
-Each distinct affiliations should be listed once. If an author has multiple
-affiliations, multiple superscripts should be placed after the name, separated
-by thin spaces. If the authors would like to highlight equal contribution by
-multiple first authors, those authors should have an asterisk placed after their
-name in superscript, and the term ``\textsuperscript{*}Equal contribution"
-should be placed in the footnote block ahead of the list of affiliations. A
-list of corresponding authors and their emails (in the format Full Name
-\textless{}email@domain.com\textgreater{}) can follow the list of affiliations.
-Ideally only one or two names should be listed.
-
-A sample file with author names is included in the ICML2018 style file
-package. Turn on the \texttt{[accepted]} option to the stylefile to
-see the names rendered. All of the guidelines above are implemented
-by the \LaTeX\ style file.
-
-\subsection{Abstract}
-
-The paper abstract should begin in the left column, 0.4~inches below the final
-address. The heading `Abstract' should be centered, bold, and in 11~point type.
-The abstract body should use 10~point type, with a vertical spacing of
-11~points, and should be indented 0.25~inches more than normal on left-hand and
-right-hand margins. Insert 0.4~inches of blank space after the body. Keep your
-abstract brief and self-contained, limiting it to one paragraph and roughly 4--6
-sentences. Gross violations will require correction at the camera-ready phase.
-
-\subsection{Partitioning the Text}
-
-You should organize your paper into sections and paragraphs to help
-readers place a structure on the material and understand its
-contributions.
-
-\subsubsection{Sections and Subsections}
-
-Section headings should be numbered, flush left, and set in 11~pt bold
-type with the content words capitalized. Leave 0.25~inches of space
-before the heading and 0.15~inches after the heading.
-
-Similarly, subsection headings should be numbered, flush left, and set
-in 10~pt bold type with the content words capitalized. Leave
-0.2~inches of space before the heading and 0.13~inches afterward.
-
-Finally, subsubsection headings should be numbered, flush left, and
-set in 10~pt small caps with the content words capitalized. Leave
-0.18~inches of space before the heading and 0.1~inches after the
-heading.
-
-Please use no more than three levels of headings.
-
-\subsubsection{Paragraphs and Footnotes}
-
-Within each section or subsection, you should further partition the
-paper into paragraphs. Do not indent the first line of a given
-paragraph, but insert a blank line between succeeding ones.
-
-You can use footnotes\footnote{Footnotes
-should be complete sentences.} to provide readers with additional
-information about a topic without interrupting the flow of the paper.
-Indicate footnotes with a number in the text where the point is most
-relevant. Place the footnote in 9~point type at the bottom of the
-column in which it appears. Precede the first footnote in a column
-with a horizontal rule of 0.8~inches.\footnote{Multiple footnotes can
-appear in each column, in the same order as they appear in the text,
-but spread them across columns and pages if possible.}
-
-\begin{figure}[ht]
-\vskip 0.2in
-\begin{center}
-\centerline{\includegraphics[width=\columnwidth]{icml_numpapers}}
-\caption{Historical locations and number of accepted papers for International
-Machine Learning Conferences (ICML 1993 -- ICML 2008) and International
-Workshops on Machine Learning (ML 1988 -- ML 1992). At the time this figure was
-produced, the number of accepted papers for ICML 2008 was unknown and instead
-estimated.}
-\label{icml-historical}
-\end{center}
-\vskip -0.2in
-\end{figure}
-
-\subsection{Figures}
-
-You may want to include figures in the paper to illustrate
-your approach and results. Such artwork should be centered,
-legible, and separated from the text. Lines should be dark and at
-least 0.5~points thick for purposes of reproduction, and text should
-not appear on a gray background.
-
-Label all distinct components of each figure. If the figure takes the
-form of a graph, then give a name for each axis and include a legend
-that briefly describes each curve. Do not include a title inside the
-figure; instead, the caption should serve this function.
-
-Number figures sequentially, placing the figure number and caption
-\emph{after} the graphics, with at least 0.1~inches of space before
-the caption and 0.1~inches after it, as in
-Figure~\ref{icml-historical}. The figure caption should be set in
-9~point type and centered unless it runs two or more lines, in which
-case it should be flush left. You may float figures to the top or
-bottom of a column, and you may set wide figures across both columns
-(use the environment \texttt{figure*} in \LaTeX). Always place
-two-column figures at the top or bottom of the page.
-
-\subsection{Algorithms}
-
-If you are using \LaTeX, please use the ``algorithm'' and ``algorithmic''
-environments to format pseudocode. These require
-the corresponding stylefiles, algorithm.sty and
-algorithmic.sty, which are supplied with this package.
-Algorithm~\ref{alg:example} shows an example.
+with a standard deviation of 
+\begin{equation}
+    \sigma = \alpha \sqrt{X_t^T A_a^{-1} X_t}
+\end{equation}
+where $\alpha$ is a constant that determines the range of the confidence bound and $A_a$ is a function of the previously seen contexts. The details of the LinUCB algorithm are given in pseudo-code in \cref{alg:linucb}.
 
 \begin{algorithm}[tb]
-   \caption{Bubble Sort}
-   \label{alg:example}
+   \caption{LinUCB Algorithm}
+   \label{alg:linucb}
 \begin{algorithmic}
-   \STATE {\bfseries Input:} data $x_i$, size $m$
-   \REPEAT
-   \STATE Initialize $noChange = true$.
-   \FOR{$i=1$ {\bfseries to} $m-1$}
-   \IF{$x_i > x_{i+1}$}
-   \STATE Swap $x_i$ and $x_{i+1}$
-   \STATE $noChange = false$
-   \ENDIF
+   \STATE {\bfseries Input:} $\alpha \in \mathbb{R}^+$, number of actions $n_a$, number of state dimensions, $n_d$, reward function $r_f$
+   \STATE $A_a \gets \mathbb{I}_{n_d}$ (identity matrix) for each action $a$ 
+    \STATE $b_a \gets 0_{n_d}$ (zero vector) for each action $a$ 
+   \FOR{$t=1$ {\bfseries to} $T$}
+   \STATE $x_t \gets {\rm toVec}(\hat{x}_t)$
+   \STATE $p_s \gets zeros(n_a)$
+   \FOR{$a=1$ {\bfseries to} $n_a$}
+   \STATE $\theta \gets A_s[a]^{-1} b_s[a]$
+   \STATE $p_s[a] \gets \theta^T x_t + \alpha \sqrt{x_t^T A_s[a]^{-1} x_t}$
    \ENDFOR
-   \UNTIL{$noChange$ is $true$}
+   \STATE $a \gets arg max(p_s)$
+   \STATE $r \gets r_f(a)$
+   \STATE $A_s[a] \gets A_s[a] + x_t x_t^T$
+   \STATE $b_s[a] \gets b_s[a] + r x_t$
+   \ENDFOR
 \end{algorithmic}
 \end{algorithm}
 
-\subsection{Tables}
+LinUCB guarantees sublinear regret for linear contextual bandit problems given that $\alpha$ is chosen to be \cite{chu2011contextual}
+\begin{equation}
+    \alpha = \sqrt{\frac{1}{2} \ln \frac{2 T K}{\delta}}
+\end{equation}
+which leads to the regret being bounded by 
+\begin{equation}
+    \mathcal{O}\left( \sqrt{T d \ln^3(K T \ln(T)/\delta} \right)
+\end{equation}
+where $T$ is the total number of decisions the algorithm makes, $K$ is the number of possibilities for each action and $\delta$ is $1 - {\rm Pr}$(the bound holds). Note, however, that this bound depends on the linearity of the reward function.
 
-You may also want to include tables that summarize material. Like
-figures, these should be centered, legible, and numbered consecutively.
-However, place the title \emph{above} the table with at least
-0.1~inches of space before the title and the same after it, as in
-Table~\ref{sample-table}. The table title should be set in 9~point
-type and centered unless it runs two or more lines, in which case it
-should be flush left.
 
-% Note use of \abovespace and \belowspace to get reasonable spacing
-% above and below tabular lines.
+\section{Approach}
+\label{approach}
+
+The following sections outline the details of the analysis approach taken. The first section discusses how the patient context is constructed from the raw dataset. The next section presents the various evaluation metrics to be used, and the final section discusses modifications to the reward function to reduce the number of severe mistakes. 
+
+\subsection{Context Definition}
+To generate a context $X_t$ we must take a row of raw data from the dataset and create a numerical vector out of it to be used in the linear model. The conversion function is referred to as \verb|toVec| uses the following rules:
+
+\begin{itemize}
+    \item If the entry is a real number then it is kept as is. If the entry is a NaN but the rest of the entries in that column are real numbers then the NaN value is replaced by the average value of that column for the examples seen to this point.
+    \item If the column contains categorical information then we employ a one-hot encoding technique as follows: if there are $n$ categories (excluding NaN) then we create a vector of zeros of length $n+1$. The index of the category is set to one if the value in the state is in the set of categories, otherwise the last entry in the vector is set to 1 to represent an unknown category. This one-hot encoding is then concatenated to the state vector.
+    \item The following columns were excluded from the dataset because they either provide information that could not be known a priori (such as the true Warfarin dosage) or were otherwise deemed unhelpful due to the lack of specific categories: PharmGKB Subject ID, Medications, INR on Reported Therapeutic Dose of Warfarin, Therapeutic Dose of Warfarin, Indication for Warfarin Treatment, Comorbidities, Target INR, Estimated Target INR Range Based on Indication. 
+\end{itemize}
+
+
+
+
+\subsection{Metrics}
+There are several metrics that are used to evaluate the efficacy of a dosing algorithm and they are outlined as follows:
+\begin{enumerate}
+    \item \textbf{Accuracy on full data set} - This is the fraction of correct dosings across the entire dataset (or excluding specific individuals for having incomplete data). For non-learning methods this metric is invariant to the order of the data but for learning methods, this metric could change based on the order that the algorithm sees the data. As reported, this metric is the least robust as it is only tried on the ordering of data provided in the data set and is used as a first-pass evaluation of the efficacy of different algorithms.
+    \item \textbf{Average regret} - This is the regret of each algorithm as a function of number of patients seen, averaged over 10 trials and reported with standard deviation bounds. This quantity depends on the order in which the patients are treated so each trial starts by randomly shuffling the dataset.
+    \item \textbf{Average accuracy on test set} - This is the fraction of correct dosings on a test set as a function of the number of patients seen, averaged over 10 trials. For each trial the data is shuffled and 80\% is used for training the algorithms while 20\% is held out for testing. The accuracy is reported as a mean with standard deviation bounds based on differences between trials. 
+\end{enumerate}
+
+
+\subsection{Reward Modification for Risk Sensitivity}
+When dealing with safety-critical applications (like peoples' health) it is import to consider not just the average accuracy or regret of a method but to also consider the severity of mistakes that the algorithm makes. In this case, if the algorithm gives a high dose of Warfarin to someone who needs a low dose, this is worse than giving it to someone who needs a medium dose. We designate an error as \textit{severe} if the dose is off by two bins (large to small or small to large). It is important to minimize severe errors (as they can be very dangerous to patients) so we propose several new reward functions that may help the algorithm to limit the number of sever mistakes. 
+
+The first new reward function is based off the idea of the algorithm wagering a reward whose magnitude is based on its confidence level of choosing a specific action. The \textit{wager reward} penalizes overconfidence in bad decisions by scaling the negative reward by the confidence level in the incorrect decision. The confidence level, $P_{\rm confidence}$ is given by the \verb|softmax| of the $p_s$ vector and is therefore in the range of 0 to 1. Concretely, the wager reward has the form 
+\begin{equation}
+    r_{\rm wager}(a) = \left \{ \begin{array}{ll}
+    0 & \quad {\rm if \ correct} \\
+    -P_{\rm confidence} & \quad {\rm if \ incorrect} \end{array} \right.
+\end{equation}
+
+The next possible reward modification is known as the \textit{severity reward} which punishes large differences between the prediction and the ground truth such that 
+\begin{equation}
+    r_{\rm severity}(a) = \left \{ \begin{array}{ll}
+    0 & \quad {\rm if \ correct} \\
+    -0.5 & \quad {\rm if \ off \ by \ one \ bin} \\
+    -1.0 & \quad {\rm if \ off \ by \ two \ bins} \end{array} \right.
+\end{equation}
+
+Lastly, we can combine these two metrics into a single reward function that has the regularization benefits of the wager reward with severity scaling of the severity reward. That is given by the \textit{severity + wager reward}:
+
+\begin{equation}
+    r_{\rm s + w}(a) = \left \{ \begin{array}{ll}
+    0 & \quad {\rm if \ correct} \\
+    -\Delta \times P_{\rm confidence} & \quad {\rm if \ incorrect} \end{array} \right.
+\end{equation}
+where $\Delta$ refers to the absolute difference between the predicted and actual dose bin.
+
+\section{Experimental Results}
+\label{experiment}
+The first experimental task was to get a baseline accuracy score for each algorithm of interest. The algorithms were tried on the whole set of test data and the fraction of correct dosings is reported in \cref{accuracy-table}. Fixed dose refers to the previously discussed 35 mg/week constant dosing choice. The clinical dosing algorithm was used in two ways: 1) by not counting patients that did not have all of the data required to compute the dose, and 2) by returning the medium dose (35 mg/week) when the clinical dose was unspecified. It was found that by ignoring the patients without all of the necessary information, the algorithm achieves the best performance compared to the other baselines, but the comparison is hardly fair. The other algorithms are forced to deal with incomplete information so a more fair comparison was to make the clinical dosing algorithm choose the medium dose when it was unclear what should be done. This brought the accuracy down but it is still an improvement over the fixed-dose baseline. The LinUCB algorithm (using all patient features except those explicitly noted) outperforms the fixed dose baseline as well as the clinical dosing algorithm that uses all patients.
+
+Two more algorithms were introduced for comparison to help understand the behavior of LinUCB. The first was using the results from LinUCB with all of the features to identify which features were most correlated with the output. As a rough estimate of correlation, we used the average magnitude of the $\theta$ values associated with each feature. The ones with the highest values were found to be:
+\begin{enumerate}
+    \item Height (cm)
+    \item Weight (kg)
+    \item Valve Replacement
+    \item Subject Reached Stable Dose of Warfarin
+    \item Current Smoker
+    \item Cerivastatin (Baycol)
+    \item Amiodarone (Cordarone)
+    \item Simvastatin (Zocor)
+    \item Aspirin
+    \item Herbal Medications, Vitamins, Supplements
+\end{enumerate}
+The algorithm labeled LinUCB (top 10 features) refers to using the LinUCB algorithm and only including the above features in the context $X_t$. It's performance was as good as the original LinUCB algorithm but ran much faster due to the lower dimensionality of the context. 
+
+The second new algorithm was a linear regression baseline that took the one-hot encoded context vectors $X_t$ and performed a linear regression to compute the best-fit model for the Warfarin dosing. This algorithm was expected to have the highest performance because it had access to the maximal amount of information. It did indeed have the highest accuracy of all the algorithms that were forced to dose every patient. This algorithm serves as an upper bound for how good a linear model can do with this data. 
 
 \begin{table}[t]
-\caption{Classification accuracies for naive Bayes and flexible
-Bayes on various data sets.}
-\label{sample-table}
+\caption{Algorithm accuracy on entire dataset}
+\label{accuracy-table}
 \vskip 0.15in
 \begin{center}
 \begin{small}
 \begin{sc}
-\begin{tabular}{lcccr}
+\begin{tabular}{lr}
 \toprule
-Data set & Naive & Flexible & Better? \\
+ & Accuracy \\
+Algorithm & (full data set) \\
 \midrule
-Breast    & 95.9$\pm$ 0.2& 96.7$\pm$ 0.2& $\surd$ \\
-Cleveland & 83.3$\pm$ 0.6& 80.0$\pm$ 0.6& $\times$\\
-Glass2    & 61.9$\pm$ 1.4& 83.8$\pm$ 0.7& $\surd$ \\
-Credit    & 74.8$\pm$ 0.5& 78.3$\pm$ 0.6&         \\
-Horse     & 73.3$\pm$ 0.9& 69.7$\pm$ 1.0& $\times$\\
-Meta      & 67.1$\pm$ 0.6& 76.5$\pm$ 0.5& $\surd$ \\
-Pima      & 75.1$\pm$ 0.6& 73.9$\pm$ 0.5&         \\
-Vehicle   & 44.9$\pm$ 0.6& 61.5$\pm$ 0.4& $\surd$ \\
+Fixed Dose (35 mg/week)    & 0.61  \\
+Clinical Dosing Algorithm  &  0.67  \\
+\quad (Ignore NaN rows) & \\
+Clinical Dosing Algorithm     & 0.62 \\
+\quad (Use 35 mg/week for NaN rows) & \\
+LinUCB  (All features)  & 0.63 \\
+LinUCB (Top 10 features) & 0.63 \\
+Linear Regression (All features) & 0.65 \\
 \bottomrule
 \end{tabular}
 \end{sc}
@@ -470,77 +297,87 @@ Vehicle   & 44.9$\pm$ 0.6& 61.5$\pm$ 0.4& $\surd$ \\
 \vskip -0.1in
 \end{table}
 
-Tables contain textual material, whereas figures contain graphical material.
-Specify the contents of each row and column in the table's topmost
-row. Again, you may float tables to a column's top or bottom, and set
-wide tables across both columns. Place two-column tables at the
-top or bottom of the page.
+The next step in analyzing the performance of these algorithms it to compute their average regret. As previously discussed, the regret was computed over 10 trials with random data ordering. \Cref{fig:regret_fd} shows the regret of the fixed dose algorithm as a function of number of patients treated. The standard deviation is plotted as a ribbon but is very small and is difficult to discern. We can see from this plot that this algorithm has linear regret (meaning that it is making the same number of mistakes later in the dosing process as in the beginning). 
 
-\subsection{Citations and References}
+We then can compute the regret for all of the other algorithms that we are using. Their regret, however, looks very similar to the fixed-dose case due to the similar levels of accuracy. So instead of plotting the total regret for each algorithm, \cref{fig:regret} plots the regret with the fixed dose regret subtracted off. Thus the relative regret compared to the fixed dose is displayed for each algorithm. The first thing to notice in this plot is that the linear regression model has the least regret (as expected). We then see that the clinical dosing algorithm has less regret than either of the LinUCB algorithms (likely because it does not need time to explore at the beginning trials. Lastly we see that initially both LinUCB algorithms experience more regret than the fixed-dose baseline (due to their initial exploration) but then begin to outperform the fixed-dose baseline by the end. It is not obvious that the LinUCB algorithms have sublinear regret in the limit, but that may just be because our data does not actually follow the linearity assumption for the reward. The LinUCB algorithms with all features initially has very similar regret to the 10-feature version, but as more data is gathered, the version with more features begins to perform better. 
 
-Please use APA reference format regardless of your formatter
-or word processor. If you rely on the \LaTeX\/ bibliographic
-facility, use \texttt{natbib.sty} and \texttt{icml2018.bst}
-included in the style-file package to obtain this format.
+The next comparison metric is the accuracy as a function of training time as pictured in \cref{fig:accuracy}. The models were tested every 200 patients on a held out test set to determine the model accuracy. Note that the non-learning algorithms will always have the same test-set performance so they appear as a straight line with a fixed standard deviation due to 10 trials. The LinUCB algorithms, however, initially have low performance during their exploration phase, and then by patient 1000 have reached the level of accuracy of the other algorithms (surpassing the fixed-dose algorithm)
 
-Citations within the text should include the authors' last names and
-year. If the authors' names are included in the sentence, place only
-the year in parentheses, for example when referencing Arthur Samuel's
-pioneering work \yrcite{Samuel59}. Otherwise place the entire
-reference in parentheses with the authors and year separated by a
-comma \cite{Samuel59}. List multiple references separated by
-semicolons \cite{kearns89,Samuel59,mitchell80}. Use the `et~al.'
-construct only for citations with three or more authors or after
-listing all authors to a publication in an earlier reference \cite{MachineLearningI}.
+\begin{figure}
+    \centering
+    \includegraphics[width=\columnwidth]{regret_fd}
+    \caption{Regret of the fixed dose algorithm}
+    \label{fig:regret_fd}
+\end{figure}
 
-Authors should cite their own work in the third person
-in the initial version of their paper submitted for blind review.
-Please refer to Section~\ref{author info} for detailed instructions on how to
-cite your own papers.
+\begin{figure}
+    \centering
+    \includegraphics[width=\columnwidth]{regret}
+    \caption{Regret of comparison algorithms with Fixed-Dose regret subtracted}
+    \label{fig:regret}
+\end{figure}
 
-Use an unnumbered first-level section heading for the references, and use a
-hanging indent style, with the first line of the reference flush against the
-left margin and subsequent lines indented by 10 points. The references at the
-end of this document give examples for journal articles \cite{Samuel59},
-conference publications \cite{langley00}, book chapters \cite{Newell81}, books
-\cite{DudaHart2nd}, edited volumes \cite{MachineLearningI}, technical reports
-\cite{mitchell80}, and dissertations \cite{kearns89}.
+\begin{figure}
+    \centering
+    \includegraphics[width=\columnwidth]{accuracy}
+    \caption{Accuracy of comparison algorithms  vs. the number of patients seen (multiply by 200 to get number of patients)}
+    \label{fig:accuracy}
+\end{figure}
 
-Alphabetize references by the surnames of the first authors, with
-single author entries preceding multiple author entries. Order
-references for the same authors by year of publication, with the
-earliest first. Make sure that each reference includes all relevant
-information (e.g., page numbers).
 
-Please put some effort into making references complete, presentable, and
-consistent. If using bibtex, please protect capital letters of names and
-abbreviations in titles, for example, use \{B\}ayesian or \{L\}ipschitz
-in your .bib file.
+Lastly, we consider the severity of the mistakes made by each of the algorithms. The accuracy and severity of mistakes is reported in \cref{severity-table}. We can first see that the fixed dose algorithm never makes a severe mistake because it always chooses the medium dose option, but it has the lowest accuracy. The clinical dosing algorithm has relatively good accuracy but suffers 5 severe mistakes in the dataset. The LinUCB with a binary reward function has good accuracy but suffers 23 mistakes, way more than any of the other algorithms, likely due to the exploration process early in the learning procedure. But, if the reward function is modified to use the wager reward, severity reward or severity + wager reward, the number of severity mistakes drops to 1. The accuracy also takes a hit but only by about 0.012-0.013 depending on the reward function, and still outperforms the fixed dose algorithm. The linear regression algorithm, despite having high accuracy, also suffers a significant number of severe mistakes.
 
-\subsection{Software and Data}
+\begin{table}[t]
+\caption{Algorithm accuracy on entire dataset}
+\label{severity-table}
+\vskip 0.15in
+\begin{center}
+\begin{small}
+\begin{sc}
+\begin{tabular}{lcc}
+\toprule
+ &  & Severe\\
+Algorithm & Accuracy & Errors \\
+\midrule
+Fixed Dose (35 mg/week)    & 0.612 & 0  \\
+Clinical Dosing Algorithm  &  0.673 & 5  \\
+\quad (Ignore NaN rows) & &\\
+Clinical Dosing Algorithm  & 0.622 & 5 \\
+\quad (Use 35 mg/week) & \\
 
-We strongly encourage the publication of software and data with the
-camera-ready version of the paper whenever appropriate. This can be
-done by including a URL in the camera-ready copy. However, do not
-include URLs that reveal your institution or identity in your
-submission for review. Instead, provide an anonymous URL or upload
-the material as ``Supplementary Material'' into the CMT reviewing
-system. Note that reviewers are not required to look at this material
-when writing their review.
+LinUCB  (All features)  & 0.628 & 23 \\
+\quad w/ binary reward & & \\
 
-% Acknowledgements should only appear in the accepted version.
-\section*{Acknowledgements}
+LinUCB  (All features)  & 0.615 & 1 \\
+\quad w/ wager reward & & \\
 
-\textbf{Do not} include acknowledgements in the initial version of
-the paper submitted for blind review.
+LinUCB  (All features)  & 0.615 & 1 \\
+\quad w/ severity reward & & \\
 
-If a paper is accepted, the final camera-ready version can (and
-probably should) include acknowledgements. In this case, please
-place such acknowledgements in an unnumbered section at the
-end of the paper. Typically, this will include thanks to reviewers
-who gave useful comments, to colleagues who contributed to the ideas,
-and to funding agencies and corporate sponsors that provided financial
-support.
+LinUCB  (All features)  & 0.616 & 1 \\
+\quad w/ wager + severity reward & & \\
+
+Linear Regression & 0.647 & 9\\
+\bottomrule
+\end{tabular}
+\end{sc}
+\end{small}
+\end{center}
+\vskip -0.1in
+\end{table}
+
+
+
+\section{Conclusions}
+\label{conclusions}
+
+This work has shown that it is feasible to construct an online learning algorithm to determine the correct dosing of Warfarin based on patient demographics, clinical data and genetic information. It was also shown that modifications to the reward function can successfully reduce the number of severe mistakes that the algorithm makes. In the future the following topics should be addressed
+
+\begin{itemize}
+    \item Attempt a nonlinear model (such as a neural network) to compare performance to linear models and to alleviate the problem of missing data.
+    \item Try other bandit algorithms such as Thompson sampling to see if linear-regression levels of performance can be obtained by an online algorithm.
+    \item Compare algorithms for different dosing bin strategies (like using 5 bins instead of 3) to see how number of options effects performance.
+\end{itemize}
 
 
 \bibliography{CS234_FinalReport}
